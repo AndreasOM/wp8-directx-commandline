@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Express 2012 for Windows Phone
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhoneDirect3DApp2", "PhoneDirect3DApp2\PhoneDirect3DApp2.vcxproj", "{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM = Debug|ARM
+		Debug|Win32 = Debug|Win32
+		Release|ARM = Release|ARM
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Debug|ARM.ActiveCfg = Debug|ARM
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Debug|ARM.Build.0 = Debug|ARM
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Debug|ARM.Deploy.0 = Debug|ARM
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Debug|Win32.Build.0 = Debug|Win32
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Debug|Win32.Deploy.0 = Debug|Win32
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Release|ARM.ActiveCfg = Release|ARM
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Release|ARM.Build.0 = Release|ARM
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Release|ARM.Deploy.0 = Release|ARM
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Release|Win32.ActiveCfg = Release|Win32
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Release|Win32.Build.0 = Release|Win32
+		{ADA17D21-D96C-4ACC-AAA1-BE65FD29048B}.Release|Win32.Deploy.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
