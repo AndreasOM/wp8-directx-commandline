@@ -1,4 +1,4 @@
-@echo off
+rem @echo off
 set PROJECT_BASE=%cd%
 
 pushd PhoneDirect3DApp2

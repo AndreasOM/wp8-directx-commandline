@@ -16,6 +16,8 @@ using namespace Windows::UI::Core;
 CubeRenderer::CubeRenderer() :
 	m_loadingComplete(false),
 	m_indexCount(0)
+	, m_fov( 70.0f )
+	, m_pMesh( nullptr )
 {
 }
 
@@ -23,9 +25,8 @@ void CubeRenderer::CreateDeviceResources()
 {
 	Direct3DBase::CreateDeviceResources();
 
-	auto loadVSTask = DX::ReadDataAsync("SimpleVertexShader.cso");
-	auto loadPSTask = DX::ReadDataAsync("SimplePixelShader.cso");
 
+	auto loadVSTask = DX::ReadDataAsync("SimpleVertexShader.cso");
 	auto createVSTask = loadVSTask.then([this](Platform::Array<byte>^ fileData) {
 		DX::ThrowIfFailed(
 			m_d3dDevice->CreateVertexShader(
@@ -53,6 +54,7 @@ void CubeRenderer::CreateDeviceResources()
 			);
 	});
 
+	auto loadPSTask = DX::ReadDataAsync("SimplePixelShader.cso");
 	auto createPSTask = loadPSTask.then([this](Platform::Array<byte>^ fileData) {
 		DX::ThrowIfFailed(
 			m_d3dDevice->CreatePixelShader(
@@ -73,91 +75,23 @@ void CubeRenderer::CreateDeviceResources()
 			);
 	});
 
+
 	auto createCubeTask = (createPSTask && createVSTask).then([this] () {
-		VertexPositionColor cubeVertices[] = 
-		{
-#ifdef COMMAND_LINE_BUILD
-			{XMFLOAT3(-0.5f, -0.5f, -0.5f), XMFLOAT3(1.0f, 1.0f, 0.0f)},
-			{XMFLOAT3(-0.5f, -0.5f,  0.5f), XMFLOAT3(1.0f, 0.0f, 0.0f)},
-			{XMFLOAT3(-0.5f,  0.5f, -0.5f), XMFLOAT3(1.0f, 1.0f, 0.0f)},
-			{XMFLOAT3(-0.5f,  0.5f,  0.5f), XMFLOAT3(1.0f, 0.0f, 0.0f)},
-			{XMFLOAT3( 0.5f, -0.5f, -0.5f), XMFLOAT3(1.0f, 1.0f, 0.0f)},
-			{XMFLOAT3( 0.5f, -0.5f,  0.5f), XMFLOAT3(1.0f, 0.0f, 0.0f)},
-			{XMFLOAT3( 0.5f,  0.5f, -0.5f), XMFLOAT3(1.0f, 1.0f, 0.0f)},
-			{XMFLOAT3( 0.5f,  0.5f,  0.5f), XMFLOAT3(1.0f, 0.0f, 0.0f)},
-#else
-			{XMFLOAT3(-0.5f, -0.5f, -0.5f), XMFLOAT3(0.0f, 1.0f, 1.0f)},
-			{XMFLOAT3(-0.5f, -0.5f,  0.5f), XMFLOAT3(0.0f, 0.0f, 0.0f)},
-			{XMFLOAT3(-0.5f,  0.5f, -0.5f), XMFLOAT3(0.0f, 1.0f, 1.0f)},
-			{XMFLOAT3(-0.5f,  0.5f,  0.5f), XMFLOAT3(0.0f, 0.0f, 0.0f)},
-			{XMFLOAT3( 0.5f, -0.5f, -0.5f), XMFLOAT3(0.0f, 1.0f, 1.0f)},
-			{XMFLOAT3( 0.5f, -0.5f,  0.5f), XMFLOAT3(0.0f, 0.0f, 0.0f)},
-			{XMFLOAT3( 0.5f,  0.5f, -0.5f), XMFLOAT3(0.0f, 1.0f, 1.0f)},
-			{XMFLOAT3( 0.5f,  0.5f,  0.5f), XMFLOAT3(0.0f, 0.0f, 1.0f)},
-#endif
-		};
-
-		D3D11_SUBRESOURCE_DATA vertexBufferData = {0};
-		vertexBufferData.pSysMem = cubeVertices;
-		vertexBufferData.SysMemPitch = 0;
-		vertexBufferData.SysMemSlicePitch = 0;
-		CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(cubeVertices), D3D11_BIND_VERTEX_BUFFER);
-		DX::ThrowIfFailed(
-			m_d3dDevice->CreateBuffer(
-				&vertexBufferDesc,
-				&vertexBufferData,
-				&m_vertexBuffer
-				)
-			);
-
-		unsigned short cubeIndices[] = 
-		{
-			0,2,1, // -x
-			1,2,3,
-
-			4,5,6, // +x
-			5,7,6,
-
-			0,1,5, // -y
-			0,5,4,
-
-			2,6,7, // +y
-			2,7,3,
-
-			0,4,6, // -z
-			0,6,2,
-
-			1,3,7, // +z
-			1,7,5,
-		};
-
-		m_indexCount = ARRAYSIZE(cubeIndices);
-
-		D3D11_SUBRESOURCE_DATA indexBufferData = {0};
-		indexBufferData.pSysMem = cubeIndices;
-		indexBufferData.SysMemPitch = 0;
-		indexBufferData.SysMemSlicePitch = 0;
-		CD3D11_BUFFER_DESC indexBufferDesc(sizeof(cubeIndices), D3D11_BIND_INDEX_BUFFER);
-		DX::ThrowIfFailed(
-			m_d3dDevice->CreateBuffer(
-				&indexBufferDesc,
-				&indexBufferData,
-				&m_indexBuffer
-				)
-			);
+		m_pMesh = new Mesh();
+		m_pMesh->initialize( m_d3dDevice );
 	});
 
 	createCubeTask.then([this] () {
 		m_loadingComplete = true;
 	});
+
+	// :TODO: m_vertexBuffer
 }
 
-void CubeRenderer::CreateWindowSizeDependentResources()
+void CubeRenderer::updateProjection()
 {
-	Direct3DBase::CreateWindowSizeDependentResources();
-
 	float aspectRatio = m_windowBounds.Width / m_windowBounds.Height;
-	float fovAngleY = 70.0f * XM_PI / 180.0f;
+	float fovAngleY = m_fov* XM_PI / 180.0f;
 	if (aspectRatio < 1.0f)
 	{
 		fovAngleY /= aspectRatio;
@@ -176,16 +110,37 @@ void CubeRenderer::CreateWindowSizeDependentResources()
 		);
 }
 
+void CubeRenderer::CreateWindowSizeDependentResources()
+{
+	Direct3DBase::CreateWindowSizeDependentResources();
+	updateProjection();
+}
+
 void CubeRenderer::Update(float timeTotal, float timeDelta)
 {
 	(void) timeDelta; // Unused parameter.
 
-	XMVECTOR eye = XMVectorSet(0.0f, 0.7f, 1.5f, 0.0f);
-	XMVECTOR at = XMVectorSet(0.0f, -0.1f, 0.0f, 0.0f);
+	m_fov = 70.0f + sinf( timeTotal*0.5f )*30.0f;
+	updateProjection();
+
+	float eyeZ = 2.5f - 1.0f*sinf( timeTotal*0.5f );
+
+	static float eyeY = 0.7f;
+	eyeY = 0.7f - 0.7f*sinf( timeTotal*3.0f );
+	if( eyeY > 0.5f )
+	{
+		eyeY = 0.5f;
+	}
+	XMVECTOR eye = XMVectorSet(0.0f, eyeY, eyeZ, 0.0f);
+	XMVECTOR at = XMVectorSet(0.0f, eyeY-0.8f, 0.0f, 0.0f);
 	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
+	float rotX = timeTotal * XM_PIDIV4;
+
+	rotX = sinf( rotX*1.5f )*2.5f;
+
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtRH(eye, at, up)));
-	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixRotationY(timeTotal * XM_PIDIV4)));
+	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixRotationY(rotX)));
 }
 
 void CubeRenderer::Render()
@@ -224,24 +179,6 @@ void CubeRenderer::Render()
 		0
 		);
 
-	UINT stride = sizeof(VertexPositionColor);
-	UINT offset = 0;
-	m_d3dContext->IASetVertexBuffers(
-		0,
-		1,
-		m_vertexBuffer.GetAddressOf(),
-		&stride,
-		&offset
-		);
-
-	m_d3dContext->IASetIndexBuffer(
-		m_indexBuffer.Get(),
-		DXGI_FORMAT_R16_UINT,
-		0
-		);
-
-	m_d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
 
 	m_d3dContext->VSSetShader(
@@ -261,10 +198,5 @@ void CubeRenderer::Render()
 		nullptr,
 		0
 		);
-
-	m_d3dContext->DrawIndexed(
-		m_indexCount,
-		0,
-		0
-		);
+	m_pMesh->render( m_d3dContext );
 }

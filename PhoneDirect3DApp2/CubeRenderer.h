@@ -2,17 +2,13 @@
 
 #include "Direct3DBase.h"
 
+#include "Mesh.h"
+
 struct ModelViewProjectionConstantBuffer
 {
 	DirectX::XMFLOAT4X4 model;
 	DirectX::XMFLOAT4X4 view;
 	DirectX::XMFLOAT4X4 projection;
-};
-
-struct VertexPositionColor
-{
-	DirectX::XMFLOAT3 pos;
-	DirectX::XMFLOAT3 color;
 };
 
 // This class renders a simple spinning cube.
@@ -30,6 +26,7 @@ public:
 	void Update(float timeTotal, float timeDelta);
 
 private:
+	void			updateProjection();
 	bool m_loadingComplete;
 
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> m_inputLayout;
@@ -41,4 +38,9 @@ private:
 
 	uint32 m_indexCount;
 	ModelViewProjectionConstantBuffer m_constantBufferData;
+
+	float			m_fov;
+
+
+	Mesh*			m_pMesh;
 };
