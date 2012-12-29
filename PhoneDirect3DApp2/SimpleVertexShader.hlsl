@@ -9,12 +9,14 @@ struct VertexShaderInput
 {
 	float3 pos : POSITION;
 	float3 color : COLOR0;
+	float2 texCoord : TEXCOORD0;
 };
 
 struct VertexShaderOutput
 {
 	float4 pos : SV_POSITION;
 	float3 color : COLOR0;
+	float2 texCoord : TEXCOORD0;
 };
 
 VertexShaderOutput main(VertexShaderInput input)
@@ -30,6 +32,8 @@ VertexShaderOutput main(VertexShaderInput input)
 
 	// Pass through the color without modification.
 	output.color = input.color;
+
+	output.texCoord = input.texCoord;
 
 	return output;
 }

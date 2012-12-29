@@ -36,11 +36,17 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> m_pixelShader;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> m_constantBuffer;
 
+	ID3D11ShaderResourceView*				m_pTextures[ 2 ];
+	//Microsoft::WRL::ComPtr<ID3D11Texture2D>	m_texture;
+
 	uint32 m_indexCount;
 	ModelViewProjectionConstantBuffer m_constantBufferData;
 
 	float			m_fov;
+	float			m_rotX;
+	float			m_rotZ;
 
 
 	Mesh*			m_pMesh;
+	Mesh*			m_pCheckerMesh;
 };

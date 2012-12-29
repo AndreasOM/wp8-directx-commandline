@@ -7,6 +7,8 @@
 #include <agile.h>
 
 #include "CubeRenderer.h"
+#include "CubeMesh.h"
+#include "CheckerMesh.h"
 
 using namespace DirectX;
 using namespace Microsoft::WRL;
@@ -18,6 +20,7 @@ CubeRenderer::CubeRenderer() :
 	m_indexCount(0)
 	, m_fov( 70.0f )
 	, m_pMesh( nullptr )
+	, m_pCheckerMesh( nullptr )
 {
 }
 
@@ -41,6 +44,7 @@ void CubeRenderer::CreateDeviceResources()
 		{
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		};
 
 		DX::ThrowIfFailed(
@@ -77,11 +81,83 @@ void CubeRenderer::CreateDeviceResources()
 
 
 	auto createCubeTask = (createPSTask && createVSTask).then([this] () {
-		m_pMesh = new Mesh();
+		m_pMesh = new CubeMesh();
 		m_pMesh->initialize( m_d3dDevice );
 	});
 
-	createCubeTask.then([this] () {
+	auto createCheckerTask = (createPSTask && createVSTask).then([this] () {
+		m_pCheckerMesh = new CheckerMesh();
+		m_pCheckerMesh->initialize( m_d3dDevice );
+	});
+
+
+	auto loadTextureTask = (createPSTask && createVSTask).then([this] () {
+		D3D11_TEXTURE2D_DESC depthBufferDesc;
+			ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
+
+	// Set up the description of the depth buffer.
+	depthBufferDesc.Width = 128;
+	depthBufferDesc.Height = 128;
+	depthBufferDesc.MipLevels = 1;
+	depthBufferDesc.ArraySize = 1;
+	depthBufferDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	depthBufferDesc.SampleDesc.Count = 1;
+	depthBufferDesc.SampleDesc.Quality = 0;
+	depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	depthBufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	depthBufferDesc.CPUAccessFlags = 0;
+	depthBufferDesc.MiscFlags = 0;
+
+	float pData[ 128*128*4 ];
+
+	for( int y=0; y<128; ++y )
+	{
+		for( int x=0; x<128; ++x )
+		{
+			int i = 128*y+x;
+//			pData[ i*4+0 ] = 0*( x%128 )/128.0f;
+//			pData[ i*4+1 ] = 0*( y%128 )/128.0f;
+			pData[ i*4+0 ] = 1*( (x+y)%256 )/256.0f;
+			pData[ i*4+1 ] = 1*( (x+y)%256 )/256.0f;
+			pData[ i*4+2 ] = 1*( (x+y)%256 )/256.0f;
+			pData[ i*4+3 ] = 1.0;
+		}
+	}
+	/*
+	for( int i=0; i<128*128; ++i )
+	{
+		pData[ i*4+0 ] = ( i%128 )/128.0f;
+		pData[ i*4+1 ] = ( i%128 )/128.0f;
+		pData[ i*4+2 ] = ( i%128 )/128.0f;
+		pData[ i*4+3 ] = 1.0;
+	}
+	*/
+	D3D11_SUBRESOURCE_DATA data;
+	data.pSysMem = pData;
+	data.SysMemPitch = 128*4*4;
+	data.SysMemSlicePitch = 0;
+
+	ID3D11Texture2D* tex = 0;
+	// Create the texture for the depth buffer using the filled out description.
+			DX::ThrowIfFailed(
+				m_d3dDevice->CreateTexture2D(&depthBufferDesc, &data, &tex)
+			);
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc;
+memset(&SRVDesc, 0, sizeof(SRVDesc));
+SRVDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+SRVDesc.Texture2D.MipLevels = 1;
+
+	DX::ThrowIfFailed(
+		m_d3dDevice->CreateShaderResourceView( tex, &SRVDesc, &m_pTextures[0])
+	);
+//		m_d3dDevice->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+//		m_d3dDevice->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+	});
+
+
+	( createCubeTask && createCheckerTask && loadTextureTask ).then([this] () {
 		m_loadingComplete = true;
 	});
 
@@ -131,16 +207,20 @@ void CubeRenderer::Update(float timeTotal, float timeDelta)
 	{
 		eyeY = 0.5f;
 	}
+	eyeY += 1.0f;
+
 	XMVECTOR eye = XMVectorSet(0.0f, eyeY, eyeZ, 0.0f);
 	XMVECTOR at = XMVectorSet(0.0f, eyeY-0.8f, 0.0f, 0.0f);
 	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
-	float rotX = timeTotal * XM_PIDIV4;
-
-	rotX = sinf( rotX*1.5f )*2.5f;
-
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtRH(eye, at, up)));
-	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixRotationY(rotX)));
+
+	m_rotX = timeTotal * XM_PIDIV4;
+	m_rotX = sinf( m_rotX*1.5f )*2.5f;
+
+	m_rotZ += fabsf( 0.001f*m_rotX );
+
+
 }
 
 void CubeRenderer::Render()
@@ -170,6 +250,25 @@ void CubeRenderer::Render()
 		m_depthStencilView.Get()
 		);
 
+	XMStoreFloat4x4(
+		&m_constantBufferData.model,
+		XMMatrixTranspose(
+			XMMatrixMultiply(
+				XMMatrixMultiply(
+					XMMatrixRotationY(m_rotX),
+					XMMatrixRotationZ(m_rotZ )
+				),
+				XMMatrixTranslation( 0.0f, 0.0f, 0.0f )
+			)
+		)
+	);
+	m_d3dContext->VSSetConstantBuffers(
+		0,
+		1,
+		m_constantBuffer.GetAddressOf()
+		);
+
+
 	m_d3dContext->UpdateSubresource(
 		m_constantBuffer.Get(),
 		0,
@@ -187,16 +286,36 @@ void CubeRenderer::Render()
 		0
 		);
 
+	m_d3dContext->PSSetShader(
+		m_pixelShader.Get(),
+		nullptr,
+		0
+		);
+
+	m_d3dContext->PSSetShaderResources( 0, 1, m_pTextures );
+	//deviceContext->PSSetSamplers(0, 1, &m_sampleState);
+
+
+	m_pMesh->render( m_d3dContext );
+
+
+	float x = sinf( m_rotX )*3.0f;
+	float y = -1.0f;
+	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixMultiply( XMMatrixRotationY(0.0f*m_rotX), XMMatrixTranslation( x, y, 0.0f ) ) ) );
 	m_d3dContext->VSSetConstantBuffers(
 		0,
 		1,
 		m_constantBuffer.GetAddressOf()
 		);
 
-	m_d3dContext->PSSetShader(
-		m_pixelShader.Get(),
-		nullptr,
+
+	m_d3dContext->UpdateSubresource(
+		m_constantBuffer.Get(),
+		0,
+		NULL,
+		&m_constantBufferData,
+		0,
 		0
 		);
-	m_pMesh->render( m_d3dContext );
+	m_pCheckerMesh->render( m_d3dContext );
 }
