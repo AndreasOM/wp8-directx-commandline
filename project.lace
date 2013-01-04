@@ -1,0 +1,12 @@
+@project.name = "wp8-directx"
+
+inject '../someproject/code/library/local/configuration/defbuild_configuration.def'
+
+module_search_path '../someproject/code/library/thirdparty'
+
+import 'platform/wp8'
+
+! PhoneDirect3DApp2/*.cpp
+! PhoneDirect3DApp2/SimplePixelShader.hlsl .fs
+! PhoneDirect3DApp2/SimpleVertexShader.hlsl .vs
+! PhoneDirect3DApp2/WMAppManifest.xml app-package
