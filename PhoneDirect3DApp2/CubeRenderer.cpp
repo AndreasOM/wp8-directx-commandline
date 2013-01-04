@@ -9,7 +9,7 @@
 #include "CubeRenderer.h"
 #include "CubeMesh.h"
 #include "CheckerMesh.h"
-
+#include <winuser.h>
 using namespace DirectX;
 using namespace Microsoft::WRL;
 using namespace Windows::Foundation;
@@ -26,10 +26,13 @@ CubeRenderer::CubeRenderer() :
 
 void CubeRenderer::CreateDeviceResources()
 {
+#ifdef PLATFORM_WP8
+	printf( "PLATFORM_WP8 defined!\n" );
+#endif
+
 	Direct3DBase::CreateDeviceResources();
 
-
-	auto loadVSTask = DX::ReadDataAsync("SimpleVertexShader.cso");
+	auto loadVSTask = DX::ReadDataAsync("SimpleVertexShader.hlslo");
 	auto createVSTask = loadVSTask.then([this](Platform::Array<byte>^ fileData) {
 		DX::ThrowIfFailed(
 			m_d3dDevice->CreateVertexShader(
@@ -58,7 +61,7 @@ void CubeRenderer::CreateDeviceResources()
 			);
 	});
 
-	auto loadPSTask = DX::ReadDataAsync("SimplePixelShader.cso");
+	auto loadPSTask = DX::ReadDataAsync("SimplePixelShader.hlslo");
 	auto createPSTask = loadPSTask.then([this](Platform::Array<byte>^ fileData) {
 		DX::ThrowIfFailed(
 			m_d3dDevice->CreatePixelShader(
@@ -140,8 +143,8 @@ void CubeRenderer::CreateDeviceResources()
 			corners[ 2 ] = pRandom[ ( int )( riy+1 )*rw + rix ];
 			corners[ 3 ] = pRandom[ ( int )( riy+1 )*rw + rix+1 ];
 
-			float rl = pRandom[ ( int )ry*rw + rix ];
-			float rr = pRandom[ ( int )ry*rw + rix+1 ];
+//			float rl = pRandom[ ( int )ry*rw + rix ];
+//			float rr = pRandom[ ( int )ry*rw + rix+1 ];
 //			float r = ( 1-rfx )*rl+( rfx )*rr;
 
 			float upper = ( 1-rfx )*corners[ 0 ]+( rfx )*corners[ 1 ];
@@ -264,10 +267,16 @@ void CubeRenderer::Update(float timeTotal, float timeDelta)
 
 void CubeRenderer::Render()
 {
-	const float midnightBlue[] = { 0.098f, 0.098f, 0.439f, 1.000f };
+#ifdef BUILD_TARGET_WP8
+	const float clearColor[] = { 0.298f, 0.298f, 0.239f, 1.000f };
+#elif COMMAND_LINE_BUILD
+	const float clearColor[] = { 0.298f, 0.098f, 0.039f, 1.000f };
+#else
+	const float clearColor[] = { 0.098f, 0.098f, 0.439f, 1.000f };
+#endif
 	m_d3dContext->ClearRenderTargetView(
 		m_renderTargetView.Get(),
-		midnightBlue
+		clearColor
 		);
 
 	m_d3dContext->ClearDepthStencilView(
