@@ -26,10 +26,6 @@ CubeRenderer::CubeRenderer() :
 
 void CubeRenderer::CreateDeviceResources()
 {
-#ifdef PLATFORM_WP8
-	printf( "PLATFORM_WP8 defined!\n" );
-#endif
-
 	Direct3DBase::CreateDeviceResources();
 
 	auto loadVSTask = DX::ReadDataAsync("SimpleVertexShader.hlslo");
@@ -267,9 +263,7 @@ void CubeRenderer::Update(float timeTotal, float timeDelta)
 
 void CubeRenderer::Render()
 {
-#ifdef BUILD_TARGET_WP8
-	const float clearColor[] = { 0.298f, 0.298f, 0.239f, 1.000f };
-#elif COMMAND_LINE_BUILD
+#ifdef COMMAND_LINE_BUILD
 	const float clearColor[] = { 0.298f, 0.098f, 0.039f, 1.000f };
 #else
 	const float clearColor[] = { 0.098f, 0.098f, 0.439f, 1.000f };
